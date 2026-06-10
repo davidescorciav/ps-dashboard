@@ -4,116 +4,361 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Customer Meetings Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
   :root { color-scheme: light; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f6fa; color: #1a1a2e; min-height: 100vh; padding: 20px; }
 
-  #authScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; text-align: center; gap: 16px; }
-  #authScreen h2 { font-size: 1.4rem; }
-  #authScreen p { font-size: 0.9rem; color: #6b7280; max-width: 400px; }
-  .auth-btn { display: inline-flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 20px; font-size: 0.95rem; font-weight: 500; color: #374151; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.08); transition: box-shadow 0.15s; }
-  .auth-btn:hover { box-shadow: 0 3px 8px rgba(0,0,0,0.12); }
-  #dashboard { display: none; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f5f6fa;
+    color: #1a1a2e;
+    min-height: 100vh;
+    padding: 20px;
+  }
 
-  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
-  .header-left h1 { font-size: 1.4rem; font-weight: 700; }
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .header-left h1 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #1a1a2e;
+  }
+
   .header-left h1 span { color: #4f46e5; }
-  .header-left .subtitle { font-size: 0.78rem; color: #6b7280; margin-top: 2px; }
-  .header-right { display: flex; gap: 10px; align-items: center; }
 
-  .quarter-tabs { display: flex; background: #fff; border-radius: 10px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-  .quarter-tabs button { padding: 7px 16px; border: none; background: transparent; cursor: pointer; font-size: 0.85rem; font-weight: 500; color: #6b7280; transition: all 0.15s; border-right: 1px solid #e5e7eb; }
+  .header-left .subtitle {
+    font-size: 0.78rem;
+    color: #6b7280;
+    margin-top: 2px;
+  }
+
+  .quarter-tabs {
+    display: flex;
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+
+  .quarter-tabs button {
+    padding: 7px 16px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #6b7280;
+    transition: all 0.15s;
+    border-right: 1px solid #e5e7eb;
+  }
+
   .quarter-tabs button:last-child { border-right: none; }
   .quarter-tabs button.active { background: #4f46e5; color: #fff; }
   .quarter-tabs button:hover:not(.active) { background: #f3f4f6; color: #374151; }
 
-  .sign-out-btn { padding: 7px 14px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; cursor: pointer; font-size: 0.82rem; color: #6b7280; }
-  .sign-out-btn:hover { background: #f3f4f6; }
+  /* Stats */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
 
-  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
   @media (max-width: 700px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
-  .stat-card { background: #fff; border-radius: 12px; padding: 16px 18px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-  .stat-label { font-size: 0.75rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
-  .stat-value { font-size: 1.9rem; font-weight: 700; color: #1a1a2e; line-height: 1; }
+
+  .stat-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px 18px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    line-height: 1;
+  }
+
   .stat-sub { font-size: 0.75rem; color: #9ca3af; margin-top: 4px; }
 
-  .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  /* Main grid */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
   @media (max-width: 700px) { .main-grid { grid-template-columns: 1fr; } }
-  .card { background: #fff; border-radius: 12px; padding: 18px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-  .card-title { font-size: 0.85rem; font-weight: 600; color: #374151; margin-bottom: 14px; }
+
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 18px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+
+  .card-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 14px;
+  }
+
   .card-full { grid-column: 1 / -1; }
 
-  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
-  .bar-label { font-size: 0.8rem; color: #374151; width: 140px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .bar-track { flex: 1; background: #f3f4f6; border-radius: 4px; height: 8px; overflow: hidden; }
-  .bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
-  .bar-count { font-size: 0.8rem; font-weight: 600; color: #4f46e5; width: 28px; text-align: right; flex-shrink: 0; }
+  /* Bar rows */
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 9px;
+  }
 
-  .meeting-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+  .bar-label {
+    font-size: 0.8rem;
+    color: #374151;
+    width: 140px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .bar-track {
+    flex: 1;
+    background: #f3f4f6;
+    border-radius: 4px;
+    height: 8px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+  }
+
+  .bar-count {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #4f46e5;
+    width: 28px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* Meetings list */
+  .meeting-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
   .meeting-item:last-child { border-bottom: none; }
-  .meeting-date-box { background: #eef2ff; border-radius: 8px; padding: 5px 8px; text-align: center; flex-shrink: 0; min-width: 46px; }
+
+  .meeting-date-box {
+    background: #eef2ff;
+    border-radius: 8px;
+    padding: 5px 8px;
+    text-align: center;
+    flex-shrink: 0;
+    min-width: 46px;
+  }
+
   .meeting-date-box .month { font-size: 0.65rem; font-weight: 600; color: #4f46e5; text-transform: uppercase; }
   .meeting-date-box .day { font-size: 1.1rem; font-weight: 700; color: #4f46e5; line-height: 1.1; }
+
   .meeting-info { flex: 1; min-width: 0; }
-  .meeting-title { font-size: 0.85rem; font-weight: 600; color: #1a1a2e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .meeting-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .meeting-meta { font-size: 0.75rem; color: #6b7280; margin-top: 2px; }
-  .attendee-chip { display: inline-block; background: #f3f4f6; border-radius: 4px; padding: 1px 6px; font-size: 0.7rem; color: #374151; margin-right: 3px; margin-top: 3px; }
+
+  .attendee-chip {
+    display: inline-block;
+    background: #f3f4f6;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 0.7rem;
+    color: #374151;
+    margin-right: 3px;
+    margin-top: 3px;
+  }
+
   .attendee-chip.external { background: #fef3c7; color: #92400e; }
 
-  .loading-state { text-align: center; padding: 40px 20px; color: #9ca3af; font-size: 0.9rem; }
-  .spinner { width: 28px; height: 28px; border: 3px solid #e5e7eb; border-top-color: #4f46e5; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+  /* States */
+  .loading-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #9ca3af;
+    font-size: 0.9rem;
+  }
+
+  .spinner {
+    width: 28px; height: 28px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #4f46e5;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+  }
+
   @keyframes spin { to { transform: rotate(360deg); } }
-  .error-msg { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 14px 16px; color: #991b1b; font-size: 0.85rem; margin-bottom: 16px; }
-  .empty-msg { text-align: center; color: #9ca3af; font-size: 0.85rem; padding: 24px 0; }
+
+  .error-msg {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    padding: 14px 16px;
+    color: #991b1b;
+    font-size: 0.85rem;
+    margin-bottom: 16px;
+  }
+
+  .empty-msg {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 0.85rem;
+    padding: 24px 0;
+  }
+
   .chart-wrap { position: relative; height: 180px; }
+
+  .bar-row.clickable { cursor: pointer; border-radius: 6px; padding: 2px 4px; margin: 0 -4px 9px; transition: background 0.12s; }
+  .bar-row.clickable:hover { background: #f3f4f6; }
+  .bar-row.clickable:hover .bar-label { color: #4f46e5; }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: #fff; border-radius: 14px; box-shadow: 0 8px 32px rgba(0,0,0,0.18); width: 100%; max-width: 560px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 14px; border-bottom: 1px solid #f3f4f6; flex-shrink: 0; }
+  .modal-header h3 { font-size: 1rem; font-weight: 700; color: #1a1a2e; }
+  .modal-header .modal-sub { font-size: 0.78rem; color: #6b7280; margin-top: 2px; }
+  .modal-close { width: 28px; height: 28px; border: none; background: #f3f4f6; border-radius: 50%; cursor: pointer; font-size: 1rem; color: #6b7280; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .modal-close:hover { background: #e5e7eb; }
+  .modal-body { overflow-y: auto; padding: 4px 20px 20px; }
+  .modal-meeting { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+  .modal-meeting:last-child { border-bottom: none; }
+  .modal-meeting .meeting-date-box { background: #eef2ff; border-radius: 8px; padding: 5px 8px; text-align: center; flex-shrink: 0; min-width: 46px; }
+  .modal-meeting .meeting-date-box .month { font-size: 0.65rem; font-weight: 600; color: #4f46e5; text-transform: uppercase; }
+  .modal-meeting .meeting-date-box .day { font-size: 1.1rem; font-weight: 700; color: #4f46e5; line-height: 1.1; }
+  .modal-meeting .info { flex: 1; min-width: 0; }
+  .modal-meeting .title { font-size: 0.85rem; font-weight: 600; color: #1a1a2e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .modal-meeting .meta { font-size: 0.75rem; color: #6b7280; margin-top: 2px; }
+  .modal-meeting .domains { font-size: 0.72rem; color: #92400e; background: #fef3c7; border-radius: 4px; padding: 1px 6px; display: inline-block; margin-top: 3px; }
 </style>
 </head>
 <body>
 
-<div id="authScreen">
+<div id="authScreen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;text-align:center;gap:16px;">
   <div style="font-size:2.5rem;">🤝</div>
-  <h2>Customer Meetings Dashboard</h2>
-  <p>Sign in with the Google account that has access to your Product Specialists' calendars.</p>
-  <button class="auth-btn" onclick="signIn()">
+  <h2 style="font-size:1.4rem;font-weight:700;">Customer Meetings Dashboard</h2>
+  <p style="font-size:0.9rem;color:#6b7280;max-width:400px;">Sign in with the Google account that has access to your Product Specialists&#39; calendars.</p>
+  <button onclick="signIn()" style="display:inline-flex;align-items:center;gap:10px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:12px 20px;font-size:0.95rem;font-weight:500;color:#374151;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
     <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
     Sign in with Google
   </button>
 </div>
-
-<div id="dashboard">
-  <div class="header">
-    <div class="header-left">
-      <h1>🤝 <span>Customer</span> Meetings</h1>
-      <div class="subtitle">Product Specialists · 8 members</div>
-    </div>
-    <div class="header-right">
-      <div class="quarter-tabs" id="quarterTabs"></div>
-      <button class="sign-out-btn" onclick="signOut()">Sign out</button>
-    </div>
+<div id="dashboard" style="display:none;">
+<div class="header">
+  <div class="header-left">
+    <h1>🤝 <span>Customer</span> Meetings</h1>
+    <div class="subtitle">Product Specialists · 8 members</div>
   </div>
-
-  <div id="errorBanner" class="error-msg" style="display:none;"></div>
-
-  <div class="stats-grid">
-    <div class="stat-card"><div class="stat-label">Total Meetings</div><div class="stat-value" id="statTotal">—</div><div class="stat-sub" id="statTotalSub"></div></div>
-    <div class="stat-card"><div class="stat-label">Unique Customers</div><div class="stat-value" id="statCustomers">—</div><div class="stat-sub">external domains</div></div>
-    <div class="stat-card"><div class="stat-label">PS Members</div><div class="stat-value" id="statTeam">—</div><div class="stat-sub">with customer meetings</div></div>
-    <div class="stat-card"><div class="stat-label">Avg / Week</div><div class="stat-value" id="statAvg">—</div><div class="stat-sub">customer meetings</div></div>
-  </div>
-
-  <div class="main-grid">
-    <div class="card card-full">
-      <div class="card-title">📅 Meetings by week · per PS member</div>
-      <div class="chart-wrap" style="height:220px;"><canvas id="weeklyChart"></canvas></div>
-    </div>
-    <div class="card"><div class="card-title">🏢 Top customers</div><div id="customerList"><div class="loading-state"><div class="spinner"></div>Loading…</div></div></div>
-    <div class="card"><div class="card-title">👥 PS member involvement</div><div id="teamList"><div class="loading-state"><div class="spinner"></div>Loading…</div></div></div>
-    <div class="card card-full"><div class="card-title">🔜 Upcoming customer meetings</div><div id="upcomingList"><div class="loading-state"><div class="spinner"></div>Loading…</div></div></div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <div class="quarter-tabs" id="quarterTabs"></div>
+    <button onclick="signOut()" style="padding:7px 14px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer;font-size:0.82rem;color:#6b7280;">Sign out</button>
   </div>
 </div>
 
+
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div><h3 id="modalName"></h3><div class="modal-sub" id="modalSub"></div></div>
+      <button class="modal-close" onclick="closeModal()">&#x2715;</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+<div id="errorBanner" class="error-msg" style="display:none;"></div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">Total Meetings</div>
+    <div class="stat-value" id="statTotal">—</div>
+    <div class="stat-sub" id="statTotalSub"></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Unique Customers</div>
+    <div class="stat-value" id="statCustomers">—</div>
+    <div class="stat-sub">external domains</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">PS Members</div>
+    <div class="stat-value" id="statTeam">—</div>
+    <div class="stat-sub">with customer meetings</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Avg / Week</div>
+    <div class="stat-value" id="statAvg">—</div>
+    <div class="stat-sub">customer meetings</div>
+  </div>
+</div>
+
+<div class="main-grid">
+  <div class="card card-full">
+    <div class="card-title">📅 Meetings by week · per PS member</div>
+    <div class="chart-wrap" style="height:220px;"><canvas id="weeklyChart"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🏢 Top customers</div>
+    <div id="customerList"><div class="loading-state"><div class="spinner"></div>Loading…</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">👥 PS member involvement</div>
+    <div id="teamList"><div class="loading-state"><div class="spinner"></div>Loading…</div></div>
+  </div>
+
+  <div class="card card-full">
+    <div class="card-title">🔜 Upcoming customer meetings</div>
+    <div id="upcomingList"><div class="loading-state"><div class="spinner"></div>Loading…</div></div>
+  </div>
+</div>
+</div>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 const CLIENT_ID = '194431509834-78i0o0hru60ahhpi3s70es1948ai3otv.apps.googleusercontent.com';
@@ -137,6 +382,7 @@ const PS_COLORS = ['#2563eb','#dc2626','#16a34a','#d97706','#7c3aed','#db2777','
 const NOW = new Date();
 const CURRENT_YEAR = NOW.getFullYear();
 let activeQ = Math.max(2, Math.floor(NOW.getMonth() / 3) + 1);
+let allCustomerMeetings = [];
 let weeklyChart = null;
 let accessToken = null;
 
@@ -206,7 +452,6 @@ function getQuarterRange(year, q) {
   const starts = [0, 3, 6, 9];
   return { start: new Date(year, starts[q-1], 1), end: new Date(year, starts[q-1]+3, 0, 23, 59, 59) };
 }
-
 function isExternal(email) {
   if (!email) return false;
   const e = email.toLowerCase();
@@ -215,7 +460,6 @@ function isExternal(email) {
   if (e.includes('@group.calendar.google.com')) return false;
   return true;
 }
-
 function isResource(a) { return a.resource === true; }
 function getDomain(email) { const p = (email||'').split('@'); return p.length > 1 ? p[1].toLowerCase() : email.toLowerCase(); }
 function getDisplayName(a) { return (a.displayName && a.displayName !== a.email) ? a.displayName : (a.email ? a.email.split('@')[0] : 'Unknown'); }
@@ -224,9 +468,9 @@ function formatTime(dt) { return new Date(dt).toLocaleTimeString('en',{hour:'2-d
 function psFirstName(email) { return email.split('@')[0].split('.')[0].replace(/\b\w/g, c => c.toUpperCase()); }
 function showError(msg) { const el = document.getElementById('errorBanner'); el.textContent = '⚠️ ' + msg; el.style.display = 'block'; }
 function setLoadingState() {
-  const html = '<div class="loading-state"><div class="spinner"></div>Loading…</div>';
+  const html = '<div class="loading-state"><div class="spinner"></div>Loading\u2026</div>';
   ['customerList','teamList','upcomingList'].forEach(id => document.getElementById(id).innerHTML = html);
-  ['statTotal','statCustomers','statTeam','statAvg'].forEach(id => document.getElementById(id).textContent = '—');
+  ['statTotal','statCustomers','statTeam','statAvg'].forEach(id => document.getElementById(id).textContent = '\u2014');
 }
 
 function buildTabs() {
@@ -247,7 +491,6 @@ function buildTabs() {
   });
 }
 
-// ---- Load ----
 async function loadData() {
   setLoadingState();
   document.getElementById('errorBanner').style.display = 'none';
@@ -261,7 +504,6 @@ async function loadData() {
     allEvents = results.flat();
   } catch(err) { showError(err.message); return; }
 
-  // Dedup pass 1: by event id
   const byId = new Map();
   allEvents.forEach(e => {
     const key = e.recurringEventId ? `${e.recurringEventId}_${e.start?.dateTime||e.start?.date}` : e.id;
@@ -269,7 +511,6 @@ async function loadData() {
     else byId.set(key, e);
   });
 
-  // Dedup pass 2: by start time
   const byTime = new Map();
   [...byId.values()].forEach(e => {
     const tk = e.start?.dateTime || e.start?.date || '';
@@ -286,10 +527,10 @@ async function loadData() {
     return attendees.some(a => a.email && PS_MEMBERS.has(a.email.toLowerCase()) && a.responseStatus === 'accepted');
   }).sort((a,b) => new Date(a.start?.dateTime||a.start?.date) - new Date(b.start?.dateTime||b.start?.date));
 
+  allCustomerMeetings = customerMeetings;
   renderDashboard(customerMeetings, start, end);
 }
 
-// ---- Render ----
 function renderDashboard(meetings, qStart, qEnd) {
   const totalWeeks = Math.max(1, Math.round((qEnd-qStart)/(7*24*3600*1000)));
   const domainSet = new Set();
@@ -311,16 +552,46 @@ function renderDashboard(meetings, qStart, qEnd) {
 
   const memberCounts = {};
   meetings.forEach(e => e._psOwners && e._psOwners.forEach(email => { const n=email.split('@')[0].replace('.',' ').replace(/\b\w/g,c=>c.toUpperCase()); memberCounts[n]=(memberCounts[n]||0)+1; }));
-  renderBarList('teamList', memberCounts, '#0ea5e9', 10);
+  renderBarList('teamList', memberCounts, '#0ea5e9', 10, true);
   renderUpcoming(meetings);
 }
 
-function renderBarList(elId, counts, color, maxItems) {
+function renderBarList(elId, counts, color, maxItems, clickable=false) {
   const el = document.getElementById(elId);
   const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,maxItems);
   if (!sorted.length) { el.innerHTML='<div class="empty-msg">No data for this quarter</div>'; return; }
   const max = sorted[0][1];
-  el.innerHTML = sorted.map(([label,count]) => `<div class="bar-row"><div class="bar-label" title="${label}">${label}</div><div class="bar-track"><div class="bar-fill" style="width:${(count/max*100).toFixed(1)}%;background:${color}"></div></div><div class="bar-count">${count}</div></div>`).join('');
+  el.innerHTML = sorted.map(([label,count]) => `<div class="bar-row${clickable?' clickable':''}" ${clickable?`onclick="openMemberModal('${label}')"`:''}><div class="bar-label" title="${label}">${label}</div><div class="bar-track"><div class="bar-fill" style="width:${(count/max*100).toFixed(1)}%;background:${color}"></div></div><div class="bar-count">${count}</div></div>`).join('');
+}
+
+function openMemberModal(displayName) {
+  const email = [...PS_MEMBERS].find(e => {
+    const n = e.split('@')[0].replace('.', ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return n === displayName;
+  });
+  if (!email) return;
+  const meetings = allCustomerMeetings.filter(e => e._psOwners && e._psOwners.has(email));
+  document.getElementById('modalName').textContent = displayName;
+  document.getElementById('modalSub').textContent = `${meetings.length} customer meeting${meetings.length!==1?'s':''} \u00b7 Q${activeQ} ${CURRENT_YEAR}`;
+  const body = document.getElementById('modalBody');
+  if (!meetings.length) { body.innerHTML='<div class="empty-msg" style="padding:24px 0;">No meetings found.</div>'; }
+  else {
+    body.innerHTML = meetings.map(e => {
+      const dt = e.start?.dateTime||e.start?.date;
+      const d = new Date(dt);
+      const month = d.toLocaleString('en',{month:'short'});
+      const day = d.getDate();
+      const time = e.start?.dateTime ? new Date(dt).toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'}) : 'All day';
+      const extDomains = [...new Set((e.attendees||[]).filter(a=>!isResource(a)&&isExternal(a.email)).map(a=>getDomain(a.email)))].join(', ');
+      return `<div class="modal-meeting"><div class="meeting-date-box"><div class="month">${month}</div><div class="day">${day}</div></div><div class="info"><div class="title">${e.summary||'(No title)'}</div><div class="meta">${time}</div>${extDomains?`<span class="domains">${extDomains}</span>`:''}</div></div>`;
+    }).join('');
+  }
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal(event) {
+  if (event && event.target !== document.getElementById('modalOverlay')) return;
+  document.getElementById('modalOverlay').classList.remove('open');
 }
 
 function renderUpcoming(meetings) {
