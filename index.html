@@ -277,6 +277,11 @@
   .modal-meeting .title { font-size: 0.85rem; font-weight: 600; color: #1a1a2e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .modal-meeting .meta { font-size: 0.75rem; color: #6b7280; margin-top: 2px; }
   .modal-meeting .domains { font-size: 0.72rem; color: #92400e; background: #fef3c7; border-radius: 4px; padding: 1px 6px; display: inline-block; margin-top: 3px; }
+
+  .ps-section-header { display:flex; align-items:center; gap:7px; padding:12px 0 6px; font-size:0.82rem; font-weight:700; color:#374151; border-top:1px solid #f3f4f6; margin-top:4px; }
+  .ps-section-header:first-child { border-top:none; margin-top:0; }
+  .ps-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .ps-count { font-size:0.72rem; font-weight:600; background:#f3f4f6; color:#6b7280; border-radius:10px; padding:1px 7px; margin-left:2px; }
 </style>
 </head>
 <body>
@@ -384,6 +389,7 @@ const CURRENT_YEAR = NOW.getFullYear();
 let activeQ = Math.max(2, Math.floor(NOW.getMonth() / 3) + 1);
 let allCustomerMeetings = [];
 let weeklyChart = null;
+let weekBoundaries = [];
 let accessToken = null;
 
 // ---- Auth ----
@@ -589,6 +595,49 @@ function openMemberModal(displayName) {
   document.getElementById('modalOverlay').classList.add('open');
 }
 
+
+function openWeekModal(weekIndex) {
+  const wb = weekBoundaries[weekIndex];
+  if (!wb) return;
+  const weekMeetings = allCustomerMeetings.filter(e => {
+    const dt = new Date(e.start?.dateTime || e.start?.date);
+    return dt >= wb.start && dt <= wb.end;
+  }).sort((a,b) => new Date(a.start?.dateTime||a.start?.date) - new Date(b.start?.dateTime||b.start?.date));
+
+  const fri = new Date(wb.start); fri.setDate(fri.getDate()+4);
+  const fmt = d => d.toLocaleString('en',{month:'short',day:'numeric'});
+  document.getElementById('modalName').textContent = `Week of ${fmt(wb.start)}`;
+  document.getElementById('modalSub').textContent = `${fmt(wb.start)} \u2013 ${fmt(fri)} \u00b7 ${weekMeetings.length} meeting${weekMeetings.length!==1?'s':''}`;
+
+  const body = document.getElementById('modalBody');
+  if (!weekMeetings.length) {
+    body.innerHTML = '<div class="empty-msg" style="padding:24px 0;">No meetings this week.</div>';
+    document.getElementById('modalOverlay').classList.add('open');
+    return;
+  }
+
+  // Group by PS member
+  const psOrder = [...PS_MEMBERS];
+  let html = '';
+  psOrder.forEach((email, i) => {
+    const memberMeetings = weekMeetings.filter(e => e._psOwners && e._psOwners.has(email));
+    if (!memberMeetings.length) return;
+    const name = email.split('@')[0].replace('.', ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const color = PS_COLORS[i % PS_COLORS.length];
+    html += `<div class="ps-section-header"><span class="ps-dot" style="background:${color}"></span>${name}<span class="ps-count">${memberMeetings.length}</span></div>`;
+    html += memberMeetings.map(e => {
+      const dt = e.start?.dateTime || e.start?.date;
+      const d = new Date(dt);
+      const month = d.toLocaleString('en',{month:'short'});
+      const day = d.getDate();
+      const time = e.start?.dateTime ? new Date(dt).toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'}) : 'All day';
+      const extDomains = [...new Set((e.attendees||[]).filter(a=>!isResource(a)&&isExternal(a.email)).map(a=>getDomain(a.email)))].join(', ');
+      return `<div class="modal-meeting"><div class="meeting-date-box"><div class="month">${month}</div><div class="day">${day}</div></div><div class="info"><div class="title">${e.summary||'(No title)'}</div><div class="meta">${time}</div>${extDomains?`<span class="domains">${extDomains}</span>`:''}</div></div>`;
+    }).join('');
+  });
+  body.innerHTML = html || '<div class="empty-msg" style="padding:24px 0;">No meetings this week.</div>';
+  document.getElementById('modalOverlay').classList.add('open');
+}
 function closeModal(event) {
   if (event && event.target !== document.getElementById('modalOverlay')) return;
   document.getElementById('modalOverlay').classList.remove('open');
@@ -627,6 +676,8 @@ function renderWeeklyChart(meetings, qStart, qEnd) {
     return { label: psFirstName(email), data, backgroundColor: PS_COLORS[i%PS_COLORS.length], borderRadius: 2, borderSkipped: false };
   }).filter(Boolean);
 
+  weekBoundaries = weekStarts.map((ws, wi) => ({ start: ws, end: weekEnds[wi], label: weeks[wi] }));
+
   const ctx = document.getElementById('weeklyChart').getContext('2d');
   if (weeklyChart) weeklyChart.destroy();
   weeklyChart = new Chart(ctx, {
@@ -634,16 +685,21 @@ function renderWeeklyChart(meetings, qStart, qEnd) {
     data: { labels: weeks, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
+      onClick: (evt, elements) => {
+        if (!elements.length) return;
+        openWeekModal(elements[0].index);
+      },
       plugins: {
         legend: { display: true, position: 'top', labels: { boxWidth: 12, font: { size: 11 }, padding: 14 } },
         tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y} meeting${ctx.parsed.y!==1?'s':''}` } }
       },
       scales: {
-        x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 }, maxRotation: 45 } },
+        x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 }, maxRotation: 45 }, cursor: 'pointer' },
         y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } }, grid: { color: '#f3f4f6' } }
       }
     }
   });
+  document.getElementById('weeklyChart').style.cursor = 'pointer';
 }
 </script>
 </body>
