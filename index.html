@@ -517,19 +517,17 @@ async function loadData() {
     else byId.set(key, e);
   });
 
-  const byTime = new Map();
-  [...byId.values()].forEach(e => {
-    const tk = e.start?.dateTime || e.start?.date || '';
-    if (!tk) { byTime.set(e.id, e); return; }
-    if (byTime.has(tk)) (e._psOwners||new Set()).forEach(o => byTime.get(tk)._psOwners.add(o));
-    else byTime.set(tk, e);
-  });
+  // Pass 1 (by event ID) is sufficient — the same meeting has the same ID across all PS calendars.
+  // Merging by start time is incorrect: it collapses unrelated simultaneous meetings,
+  // attributing them to the wrong PS members.
 
-  const customerMeetings = [...byTime.values()].filter(e => {
+  const customerMeetings = [...byId.values()].filter(e => {
     const attendees = e.attendees || [];
     const real = attendees.filter(a => !isResource(a) && !IGNORED_ATTENDEES.has((a.email||'').toLowerCase()));
     if (real.length <= 1) return false;
-    if (!real.some(a => isExternal(a.email))) return false;
+    const hasQatar = (e.summary || '').toLowerCase().includes('qatar') ||
+      attendees.some(a => (a.email || '').toLowerCase().includes('qatar'));
+    if (!hasQatar && !real.some(a => isExternal(a.email))) return false;
     return attendees.some(a => a.email && PS_MEMBERS.has(a.email.toLowerCase()) && a.responseStatus === 'accepted');
   }).sort((a,b) => new Date(a.start?.dateTime||a.start?.date) - new Date(b.start?.dateTime||b.start?.date));
 
