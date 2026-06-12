@@ -525,9 +525,7 @@ async function loadData() {
     const attendees = e.attendees || [];
     const real = attendees.filter(a => !isResource(a) && !IGNORED_ATTENDEES.has((a.email||'').toLowerCase()));
     if (real.length <= 1) return false;
-    const hasQatar = (e.summary || '').toLowerCase().includes('qatar') ||
-      attendees.some(a => (a.email || '').toLowerCase().includes('qatar'));
-    if (!hasQatar && !real.some(a => isExternal(a.email))) return false;
+    if (!real.some(a => isExternal(a.email))) return false;
     return attendees.some(a => a.email && PS_MEMBERS.has(a.email.toLowerCase()) && a.responseStatus === 'accepted');
   }).sort((a,b) => new Date(a.start?.dateTime||a.start?.date) - new Date(b.start?.dateTime||b.start?.date));
 
