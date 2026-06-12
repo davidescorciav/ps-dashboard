@@ -68,12 +68,13 @@
   /* Stats */
   .stats-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 14px;
     margin-bottom: 20px;
   }
 
-  @media (max-width: 700px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 900px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 600px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
 
   .stat-card {
     background: #fff;
@@ -282,6 +283,17 @@
   .ps-section-header:first-child { border-top:none; margin-top:0; }
   .ps-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
   .ps-count { font-size:0.72rem; font-weight:600; background:#f3f4f6; color:#6b7280; border-radius:10px; padding:1px 7px; margin-left:2px; }
+
+  .type-badge { display:inline-block; font-size:0.68rem; font-weight:600; border-radius:4px; padding:1px 7px; margin-top:3px; }
+  .type-badge.csm { background:#dcfce7; color:#166534; }
+  .type-badge.sales { background:#dbeafe; color:#1e40af; }
+  .type-badge.other { background:#f3f4f6; color:#6b7280; }
+  .type-split { display:flex; gap:14px; margin-top:6px; }
+  .type-split-item { font-size:0.72rem; font-weight:600; }
+  .type-split-item .ts-count { font-size:1.1rem; display:block; }
+  .type-split-item.csm .ts-count { color:#16a34a; }
+  .type-split-item.sales .ts-count { color:#2563eb; }
+  .type-split-item.other .ts-count { color:#9ca3af; }
 </style>
 </head>
 <body>
@@ -339,6 +351,16 @@
     <div class="stat-label">Avg / Week</div>
     <div class="stat-value" id="statAvg">—</div>
     <div class="stat-sub">customer meetings</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">CSM Meetings</div>
+    <div class="stat-value" id="statCsm">—</div>
+    <div class="stat-sub">Fireflies notetaker</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Sales Meetings</div>
+    <div class="stat-value" id="statSales">—</div>
+    <div class="stat-sub">Gong notetaker</div>
   </div>
 </div>
 
@@ -533,6 +555,62 @@ async function loadData() {
   renderDashboard(customerMeetings, start, end);
 }
 
+const CSM_EMAILS = new Set([
+  'andrea.wittboldt@bannerflow.com',
+  'devin.manning@bannerflow.com',
+  'elin.iredahl@bannerflow.com',
+  'janni.hellerup@bannerflow.com',
+  'katerina.godunova@bannerflow.com',
+  'mustafa.kayan@bannerflow.com',
+  'patrik.hallenius@bannerflow.com',
+  'patrik.hållenius@bannerflow.com',
+  'philip.nilsson@bannerflow.com',
+  'sara.alexopoulos@bannerflow.com',
+  'tanvi.malik@bannerflow.com',
+  'veronika.steen@bannerflow.com',
+]);
+
+const SALES_EMAILS = new Set([
+  'daniel.angvik@bannerflow.com',
+  'adam.ahlstrom@bannerflow.com',
+  'adam.åhlström@bannerflow.com',
+  'andreas.tisell@bannerflow.com',
+  'gabriel.mangell@bannerflow.com',
+  'nicholas.comben@bannerflow.com',
+  'omer.mohamed@bannerflow.com',
+  'sebastian.gumpfer@bannerflow.com',
+  'sebastian.scaparro@bannerflow.com',
+  'thomas.haugan@bannerflow.com',
+  'niklas.frank@bannerflow.com',
+  'tim.theissen@bannerflow.com',
+  'cobain.boehringer@bannerflow.com',
+  'andy.hammond@bannerflow.com',
+  'patrick.gwozdz@bannerflow.com',
+  'hakim.lazrak@bannerflow.com',
+  'luke.inkle@bannerflow.com',
+  'saf.chowdhury@bannerflow.com',
+]);
+
+function classifyMeeting(e) {
+  const emails = (e.attendees || []).map(a => (a.email || '').toLowerCase());
+  const hasCsm = emails.some(em => CSM_EMAILS.has(em));
+  const hasSales = emails.some(em => SALES_EMAILS.has(em));
+  if (hasCsm && !hasSales) return 'csm';
+  if (hasSales && !hasCsm) return 'sales';
+  if (hasCsm && hasSales) return 'csm';
+  // Fall back to notetaker signals
+  const hasFireflies = emails.some(em => em.includes('fireflies'));
+  const hasGong = emails.some(em => em.includes('gong'));
+  if (hasFireflies && !hasGong) return 'csm';
+  if (hasGong && !hasFireflies) return 'sales';
+  return 'other';
+}
+
+function typeBadge(type) {
+  const labels = { csm: 'CSM', sales: 'Sales', other: 'Unclassified' };
+  return `<span class="type-badge ${type}">${labels[type]||'Unclassified'}</span>`;
+}
+
 function renderDashboard(meetings, qStart, qEnd) {
   const totalWeeks = Math.max(1, Math.round((qEnd-qStart)/(7*24*3600*1000)));
   const domainSet = new Set();
@@ -545,6 +623,10 @@ function renderDashboard(meetings, qStart, qEnd) {
   document.getElementById('statCustomers').textContent = domainSet.size;
   document.getElementById('statTeam').textContent = psMembers.size;
   document.getElementById('statAvg').textContent = (meetings.length/totalWeeks).toFixed(1);
+  const csmCount = meetings.filter(e => classifyMeeting(e) === 'csm').length;
+  const salesCount = meetings.filter(e => classifyMeeting(e) === 'sales').length;
+  document.getElementById('statCsm').textContent = csmCount;
+  document.getElementById('statSales').textContent = salesCount;
 
   renderWeeklyChart(meetings, qStart, qEnd);
 
@@ -585,7 +667,7 @@ function openMemberModal(displayName) {
       const day = d.getDate();
       const time = e.start?.dateTime ? new Date(dt).toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'}) : 'All day';
       const extDomains = [...new Set((e.attendees||[]).filter(a=>!isResource(a)&&isExternal(a.email)).map(a=>getDomain(a.email)))].join(', ');
-      return `<div class="modal-meeting"><div class="meeting-date-box"><div class="month">${month}</div><div class="day">${day}</div></div><div class="info"><div class="title">${e.summary||'(No title)'}</div><div class="meta">${time}</div>${extDomains?`<span class="domains">${extDomains}</span>`:''}</div></div>`;
+      return `<div class="modal-meeting"><div class="meeting-date-box"><div class="month">${month}</div><div class="day">${day}</div></div><div class="info"><div class="title">${e.summary||'(No title)'}</div><div class="meta">${time}</div><div>${typeBadge(classifyMeeting(e))}${extDomains?` <span class="domains">${extDomains}</span>`:''}</div></div></div>`;
     }).join('');
   }
   document.getElementById('modalOverlay').classList.add('open');
@@ -628,7 +710,7 @@ function openWeekModal(weekIndex) {
       const day = d.getDate();
       const time = e.start?.dateTime ? new Date(dt).toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'}) : 'All day';
       const extDomains = [...new Set((e.attendees||[]).filter(a=>!isResource(a)&&isExternal(a.email)).map(a=>getDomain(a.email)))].join(', ');
-      return `<div class="modal-meeting"><div class="meeting-date-box"><div class="month">${month}</div><div class="day">${day}</div></div><div class="info"><div class="title">${e.summary||'(No title)'}</div><div class="meta">${time}</div>${extDomains?`<span class="domains">${extDomains}</span>`:''}</div></div>`;
+      return `<div class="modal-meeting"><div class="meeting-date-box"><div class="month">${month}</div><div class="day">${day}</div></div><div class="info"><div class="title">${e.summary||'(No title)'}</div><div class="meta">${time}</div><div>${typeBadge(classifyMeeting(e))}${extDomains?` <span class="domains">${extDomains}</span>`:''}</div></div></div>`;
     }).join('');
   });
   body.innerHTML = html || '<div class="empty-msg" style="padding:24px 0;">No meetings this week.</div>';
