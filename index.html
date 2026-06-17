@@ -408,7 +408,7 @@ const PS_COLORS = ['#2563eb','#dc2626','#16a34a','#d97706','#7c3aed','#db2777','
 
 const NOW = new Date();
 const CURRENT_YEAR = NOW.getFullYear();
-let activeQ = Math.max(2, Math.floor(NOW.getMonth() / 3) + 1);
+let activeQ = Math.floor(NOW.getMonth() / 3) + 1;
 let allCustomerMeetings = [];
 let weeklyChart = null;
 let weekBoundaries = [];
@@ -504,8 +504,8 @@ function setLoadingState() {
 function buildTabs() {
   const tabs = document.getElementById('quarterTabs');
   tabs.innerHTML = '';
-  ['Q2','Q3','Q4'].forEach((label, i) => {
-    const q = i + 2;
+  ['Q1','Q2','Q3','Q4'].forEach((label, i) => {
+    const q = i + 1;
     const btn = document.createElement('button');
     btn.textContent = `${label} ${CURRENT_YEAR}`;
     if (q === activeQ) btn.classList.add('active');
@@ -524,7 +524,7 @@ async function loadData() {
   document.getElementById('errorBanner').style.display = 'none';
   const { start, end } = getQuarterRange(CURRENT_YEAR, activeQ);
   const timeMin = start.toISOString(), timeMax = end.toISOString();
-  const calendars = activeQ === 2 ? [...PS_MEMBERS].filter(m => m !== CECILIA) : [...PS_MEMBERS];
+  const calendars = activeQ <= 2 ? [...PS_MEMBERS].filter(m => m !== CECILIA) : [...PS_MEMBERS];
 
   let allEvents = [];
   try {
@@ -547,7 +547,8 @@ async function loadData() {
     const attendees = e.attendees || [];
     const real = attendees.filter(a => !isResource(a) && !IGNORED_ATTENDEES.has((a.email||'').toLowerCase()));
     if (real.length <= 1) return false;
-    if (!real.some(a => isExternal(a.email))) return false;
+    const isWeeklyPlanning = (e.summary || '').toLowerCase().includes('bannerflow - weekly planning meeting');
+    if (!isWeeklyPlanning && !real.some(a => isExternal(a.email))) return false;
     return attendees.some(a => a.email && PS_MEMBERS.has(a.email.toLowerCase()) && a.responseStatus === 'accepted');
   }).sort((a,b) => new Date(a.start?.dateTime||a.start?.date) - new Date(b.start?.dateTime||b.start?.date));
 
@@ -632,7 +633,7 @@ function renderDashboard(meetings, qStart, qEnd) {
 
   const domainCounts = {};
   meetings.forEach(e => (e.attendees||[]).filter(a => !isResource(a) && isExternal(a.email)).forEach(a => { const d=getDomain(a.email); domainCounts[d]=(domainCounts[d]||0)+1; }));
-  renderBarList('customerList', domainCounts, '#4f46e5', 10);
+  renderBarList('customerList', domainCounts, '#4f46e5', 10, true, 'openCustomerModal');
 
   const memberCounts = {};
   meetings.forEach(e => e._psOwners && e._psOwners.forEach(email => { const n=email.split('@')[0].replace('.',' ').replace(/\b\w/g,c=>c.toUpperCase()); memberCounts[n]=(memberCounts[n]||0)+1; }));
@@ -640,12 +641,37 @@ function renderDashboard(meetings, qStart, qEnd) {
   renderUpcoming(meetings);
 }
 
-function renderBarList(elId, counts, color, maxItems, clickable=false) {
+function renderBarList(elId, counts, color, maxItems, clickable=false, handler='openMemberModal') {
   const el = document.getElementById(elId);
   const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,maxItems);
   if (!sorted.length) { el.innerHTML='<div class="empty-msg">No data for this quarter</div>'; return; }
   const max = sorted[0][1];
-  el.innerHTML = sorted.map(([label,count]) => `<div class="bar-row${clickable?' clickable':''}" ${clickable?`onclick="openMemberModal('${label}')"`:''}><div class="bar-label" title="${label}">${label}</div><div class="bar-track"><div class="bar-fill" style="width:${(count/max*100).toFixed(1)}%;background:${color}"></div></div><div class="bar-count">${count}</div></div>`).join('');
+  el.innerHTML = sorted.map(([label,count]) => `<div class="bar-row${clickable?' clickable':''}" ${clickable?`onclick="${handler}('${label}')"`:''}><div class="bar-label" title="${label}">${label}</div><div class="bar-track"><div class="bar-fill" style="width:${(count/max*100).toFixed(1)}%;background:${color}"></div></div><div class="bar-count">${count}</div></div>`).join('');
+}
+
+function openCustomerModal(domain) {
+  const meetings = allCustomerMeetings.filter(e =>
+    (e.attendees || []).some(a => !isResource(a) && getDomain(a.email) === domain)
+  ).sort((a,b) => new Date(a.start?.dateTime||a.start?.date) - new Date(b.start?.dateTime||b.start?.date));
+
+  document.getElementById('modalName').textContent = domain;
+  document.getElementById('modalSub').textContent = `${meetings.length} meeting${meetings.length!==1?'s':''} · Q${activeQ} ${CURRENT_YEAR}`;
+
+  const body = document.getElementById('modalBody');
+  if (!meetings.length) {
+    body.innerHTML = '<div class="empty-msg" style="padding:24px 0;">No meetings found.</div>';
+  } else {
+    body.innerHTML = meetings.map(e => {
+      const dt = e.start?.dateTime || e.start?.date;
+      const d = new Date(dt);
+      const month = d.toLocaleString('en',{month:'short'});
+      const day = d.getDate();
+      const time = e.start?.dateTime ? new Date(dt).toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'}) : 'All day';
+      const psNames = e._psOwners ? [...e._psOwners].map(psFirstName).join(', ') : '';
+      return `<div class="modal-meeting"><div class="meeting-date-box"><div class="month">${month}</div><div class="day">${day}</div></div><div class="info"><div class="title">${e.summary||'(No title)'}</div><div class="meta">${time}${psNames?' · '+psNames:''}</div><div>${typeBadge(classifyMeeting(e))}</div></div></div>`;
+    }).join('');
+  }
+  document.getElementById('modalOverlay').classList.add('open');
 }
 
 function openMemberModal(displayName) {
