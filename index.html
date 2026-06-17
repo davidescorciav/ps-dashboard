@@ -661,7 +661,8 @@ function openCustomerModal(domain) {
   if (!meetings.length) {
     body.innerHTML = '<div class="empty-msg" style="padding:24px 0;">No meetings found.</div>';
   } else {
-    body.innerHTML = meetings.map(e => {
+    const summary = `<div style="background:#f3f4f6;border-radius:8px;padding:10px 14px;margin:12px 0 4px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:0.8rem;color:#6b7280;">Q${activeQ} ${CURRENT_YEAR} total</span><span style="font-size:1.1rem;font-weight:700;color:#4f46e5;">${meetings.length} meeting${meetings.length!==1?'s':''}</span></div>`;
+    body.innerHTML = summary + meetings.map(e => {
       const dt = e.start?.dateTime || e.start?.date;
       const d = new Date(dt);
       const month = d.toLocaleString('en',{month:'short'});
