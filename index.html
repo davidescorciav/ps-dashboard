@@ -550,7 +550,8 @@ async function loadData() {
     const isWeeklyPlanning = (e.summary || '').toLowerCase().includes('bannerflow - weekly planning meeting');
     if (!isWeeklyPlanning && !real.some(a => isExternal(a.email))) return false;
     return attendees.some(a => a.email && PS_MEMBERS.has(a.email.toLowerCase()) && a.responseStatus === 'accepted');
-  }).sort((a,b) => new Date(a.start?.dateTime||a.start?.date) - new Date(b.start?.dateTime||b.start?.date));
+  }).filter(e => new Date(e.start?.dateTime||e.start?.date) <= NOW)
+    .sort((a,b) => new Date(a.start?.dateTime||a.start?.date) - new Date(b.start?.dateTime||b.start?.date));
 
   allCustomerMeetings = customerMeetings;
   renderDashboard(customerMeetings, start, end);
@@ -632,7 +633,10 @@ function renderDashboard(meetings, qStart, qEnd) {
   renderWeeklyChart(meetings, qStart, qEnd);
 
   const domainCounts = {};
-  meetings.forEach(e => (e.attendees||[]).filter(a => !isResource(a) && isExternal(a.email)).forEach(a => { const d=getDomain(a.email); domainCounts[d]=(domainCounts[d]||0)+1; }));
+  meetings.forEach(e => {
+    const domains = new Set((e.attendees||[]).filter(a => !isResource(a) && isExternal(a.email)).map(a => getDomain(a.email)));
+    domains.forEach(d => { domainCounts[d] = (domainCounts[d]||0) + 1; });
+  });
   renderBarList('customerList', domainCounts, '#4f46e5', 10, true, 'openCustomerModal');
 
   const memberCounts = {};
