@@ -370,6 +370,11 @@
     <div class="chart-wrap" style="height:220px;"><canvas id="weeklyChart"></canvas></div>
   </div>
 
+  <div class="card card-full">
+    <div class="card-title" id="thisWeekTitle">📆 This week</div>
+    <div id="thisWeekList"><div class="loading-state"><div class="spinner"></div>Loading…</div></div>
+  </div>
+
   <div class="card">
     <div class="card-title">🏢 Top customers</div>
     <div id="customerList"><div class="loading-state"><div class="spinner"></div>Loading…</div></div>
@@ -550,11 +555,11 @@ async function loadData() {
     const isWeeklyPlanning = (e.summary || '').toLowerCase().includes('bannerflow - weekly planning meeting');
     if (!isWeeklyPlanning && !real.some(a => isExternal(a.email))) return false;
     return attendees.some(a => a.email && PS_MEMBERS.has(a.email.toLowerCase()) && a.responseStatus === 'accepted');
-  }).filter(e => new Date(e.start?.dateTime||e.start?.date) <= NOW)
-    .sort((a,b) => new Date(a.start?.dateTime||a.start?.date) - new Date(b.start?.dateTime||b.start?.date));
+  }).sort((a,b) => new Date(a.start?.dateTime||a.start?.date) - new Date(b.start?.dateTime||b.start?.date));
 
-  allCustomerMeetings = customerMeetings;
-  renderDashboard(customerMeetings, start, end);
+  // Past-only for counts/charts/modals; full list for the upcoming section
+  allCustomerMeetings = customerMeetings.filter(e => new Date(e.start?.dateTime||e.start?.date) <= NOW);
+  renderDashboard(allCustomerMeetings, customerMeetings, start, end);
 }
 
 const CSM_EMAILS = new Set([
@@ -613,7 +618,7 @@ function typeBadge(type) {
   return `<span class="type-badge ${type}">${labels[type]||'Unclassified'}</span>`;
 }
 
-function renderDashboard(meetings, qStart, qEnd) {
+function renderDashboard(meetings, allMeetings, qStart, qEnd) {
   const totalWeeks = Math.max(1, Math.round((qEnd-qStart)/(7*24*3600*1000)));
   const domainSet = new Set();
   meetings.forEach(e => (e.attendees||[]).filter(a => !isResource(a) && isExternal(a.email)).forEach(a => domainSet.add(getDomain(a.email))));
@@ -642,7 +647,8 @@ function renderDashboard(meetings, qStart, qEnd) {
   const memberCounts = {};
   meetings.forEach(e => e._psOwners && e._psOwners.forEach(email => { const n=email.split('@')[0].replace('.',' ').replace(/\b\w/g,c=>c.toUpperCase()); memberCounts[n]=(memberCounts[n]||0)+1; }));
   renderBarList('teamList', memberCounts, '#0ea5e9', 10, true);
-  renderUpcoming(meetings);
+  renderUpcoming(allMeetings);
+  renderCurrentWeek(allMeetings);
 }
 
 function renderBarList(elId, counts, color, maxItems, clickable=false, handler='openMemberModal') {
@@ -750,6 +756,62 @@ function openWeekModal(weekIndex) {
 function closeModal(event) {
   if (event && event.target !== document.getElementById('modalOverlay')) return;
   document.getElementById('modalOverlay').classList.remove('open');
+}
+
+function renderCurrentWeek(allMeetings) {
+  const el = document.getElementById('thisWeekList');
+  const titleEl = document.getElementById('thisWeekTitle');
+  // Mon–Fri of current calendar week
+  const today = new Date();
+  const dow = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+  monday.setHours(0, 0, 0, 0);
+  const friday = new Date(monday);
+  friday.setDate(monday.getDate() + 4);
+  friday.setHours(23, 59, 59, 999);
+  const todayStart = new Date(today); todayStart.setHours(0,0,0,0);
+  const todayEnd   = new Date(today); todayEnd.setHours(23,59,59,999);
+
+  const fmtShort = d => d.toLocaleString('en', {month:'short', day:'numeric'});
+  titleEl.textContent = `📆 This week · ${fmtShort(monday)} – ${fmtShort(friday)}`;
+
+  const weekMeetings = allMeetings.filter(e => {
+    const dt = new Date(e.start?.dateTime || e.start?.date);
+    return dt >= monday && dt <= friday;
+  });
+
+  const psArr = [...PS_MEMBERS];
+  const rows = psArr
+    .filter(email => !(activeQ <= 2 && email === CECILIA))
+    .map((email, i) => {
+      const myMeetings = weekMeetings.filter(e => e._psOwners && e._psOwners.has(email));
+      const todayCount = myMeetings.filter(e => {
+        const dt = new Date(e.start?.dateTime || e.start?.date);
+        return dt >= todayStart && dt <= todayEnd;
+      }).length;
+      const name = email.split('@')[0].split('.').map(w => w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+      return { email, name, count: myMeetings.length, todayCount, color: PS_COLORS[i % PS_COLORS.length] };
+    })
+    .sort((a, b) => b.count - a.count);
+
+  const maxCount = Math.max(1, ...rows.map(r => r.count));
+
+  if (!rows.some(r => r.count > 0)) {
+    el.innerHTML = '<div class="empty-msg">No meetings this week in the selected quarter.</div>';
+    return;
+  }
+
+  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px 20px;">${
+    rows.map(r => `
+      <div style="display:flex;align-items:center;gap:9px;">
+        <span class="ps-dot" style="background:${r.color}"></span>
+        <div class="bar-label" style="width:110px;flex-shrink:0;">${r.name}</div>
+        <div class="bar-track" style="flex:1"><div class="bar-fill" style="width:${r.count?((r.count/maxCount)*100).toFixed(1):0}%;background:${r.color}"></div></div>
+        <div style="font-size:0.8rem;font-weight:700;color:${r.color};width:24px;text-align:right;flex-shrink:0;">${r.count}</div>
+        ${r.todayCount ? `<span style="font-size:0.65rem;background:${r.color}22;color:${r.color};border-radius:4px;padding:1px 5px;flex-shrink:0;">${r.todayCount} today</span>` : '<span style="width:56px;flex-shrink:0;"></span>'}
+      </div>`).join('')
+  }</div>`;
 }
 
 function renderUpcoming(meetings) {
