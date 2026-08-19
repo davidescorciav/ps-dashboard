@@ -386,6 +386,11 @@
   </div>
 
   <div class="card card-full">
+    <div class="card-title">🤝 Shadowing sessions · 2+ PS members</div>
+    <div id="shadowList"><div class="loading-state"><div class="spinner"></div>Loading…</div></div>
+  </div>
+
+  <div class="card card-full">
     <div class="card-title">🔜 Upcoming customer meetings</div>
     <div id="upcomingList"><div class="loading-state"><div class="spinner"></div>Loading…</div></div>
   </div>
@@ -644,11 +649,10 @@ function renderDashboard(meetings, allMeetings, qStart, qEnd) {
   });
   renderBarList('customerList', domainCounts, '#4f46e5', 10, true, 'openCustomerModal');
 
-  const memberCounts = {};
-  meetings.forEach(e => e._psOwners && e._psOwners.forEach(email => { const n=email.split('@')[0].replace('.',' ').replace(/\b\w/g,c=>c.toUpperCase()); memberCounts[n]=(memberCounts[n]||0)+1; }));
-  renderBarList('teamList', memberCounts, '#0ea5e9', 10, true);
+  renderTeamList(meetings);
   renderUpcoming(allMeetings);
   renderCurrentWeek(allMeetings);
+  renderShadowing(allMeetings);
 }
 
 function renderBarList(elId, counts, color, maxItems, clickable=false, handler='openMemberModal') {
@@ -704,7 +708,8 @@ function openMemberModal(displayName) {
       const day = d.getDate();
       const time = e.start?.dateTime ? new Date(dt).toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'}) : 'All day';
       const extDomains = [...new Set((e.attendees||[]).filter(a=>!isResource(a)&&isExternal(a.email)).map(a=>getDomain(a.email)))].join(', ');
-      return `<div class="modal-meeting"><div class="meeting-date-box"><div class="month">${month}</div><div class="day">${day}</div></div><div class="info"><div class="title">${e.summary||'(No title)'}</div><div class="meta">${time}</div><div>${typeBadge(classifyMeeting(e))}${extDomains?` <span class="domains">${extDomains}</span>`:''}</div></div></div>`;
+      const dur = e.start?.dateTime && e.end?.dateTime ? ` · <span style="color:#0ea5e9;font-weight:600;">${((new Date(e.end.dateTime)-new Date(e.start.dateTime))/3600000).toFixed(1)}h</span>` : '';
+      return `<div class="modal-meeting"><div class="meeting-date-box"><div class="month">${month}</div><div class="day">${day}</div></div><div class="info"><div class="title">${e.summary||'(No title)'}</div><div class="meta">${time}${dur}</div><div>${typeBadge(classifyMeeting(e))}${extDomains?` <span class="domains">${extDomains}</span>`:''}</div></div></div>`;
     }).join('');
   }
   document.getElementById('modalOverlay').classList.add('open');
@@ -747,7 +752,8 @@ function openWeekModal(weekIndex) {
       const day = d.getDate();
       const time = e.start?.dateTime ? new Date(dt).toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'}) : 'All day';
       const extDomains = [...new Set((e.attendees||[]).filter(a=>!isResource(a)&&isExternal(a.email)).map(a=>getDomain(a.email)))].join(', ');
-      return `<div class="modal-meeting"><div class="meeting-date-box"><div class="month">${month}</div><div class="day">${day}</div></div><div class="info"><div class="title">${e.summary||'(No title)'}</div><div class="meta">${time}</div><div>${typeBadge(classifyMeeting(e))}${extDomains?` <span class="domains">${extDomains}</span>`:''}</div></div></div>`;
+      const dur = e.start?.dateTime && e.end?.dateTime ? ` · <span style="color:#0ea5e9;font-weight:600;">${((new Date(e.end.dateTime)-new Date(e.start.dateTime))/3600000).toFixed(1)}h</span>` : '';
+      return `<div class="modal-meeting"><div class="meeting-date-box"><div class="month">${month}</div><div class="day">${day}</div></div><div class="info"><div class="title">${e.summary||'(No title)'}</div><div class="meta">${time}${dur}</div><div>${typeBadge(classifyMeeting(e))}${extDomains?` <span class="domains">${extDomains}</span>`:''}</div></div></div>`;
     }).join('');
   });
   body.innerHTML = html || '<div class="empty-msg" style="padding:24px 0;">No meetings this week.</div>';
@@ -756,6 +762,99 @@ function openWeekModal(weekIndex) {
 function closeModal(event) {
   if (event && event.target !== document.getElementById('modalOverlay')) return;
   document.getElementById('modalOverlay').classList.remove('open');
+}
+
+function renderShadowing(allMeetings) {
+  const el = document.getElementById('shadowList');
+  // Meetings where 2+ PS members are present
+  const shadowMeetings = allMeetings
+    .filter(e => e._psOwners && e._psOwners.size >= 2)
+    .sort((a, b) => new Date(b.start?.dateTime||b.start?.date) - new Date(a.start?.dateTime||a.start?.date));
+
+  if (!shadowMeetings.length) {
+    el.innerHTML = '<div class="empty-msg">No shadowing sessions found this quarter.</div>';
+    return;
+  }
+
+  const psArr = [...PS_MEMBERS];
+  const fmt = d => new Date(d).toLocaleString('en',{month:'short',day:'numeric',year:'numeric'});
+  const isPast = e => new Date(e.start?.dateTime||e.start?.date) <= NOW;
+
+  el.innerHTML = shadowMeetings.map(e => {
+    const dt = e.start?.dateTime || e.start?.date;
+    const d = new Date(dt);
+    const past = isPast(e);
+    const owners = [...e._psOwners];
+    const dots = owners.map(email => {
+      const i = psArr.indexOf(email);
+      const color = PS_COLORS[i % PS_COLORS.length];
+      const name = email.split('@')[0].split('.').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+      return `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:8px;font-size:0.78rem;color:#374151;"><span class="ps-dot" style="background:${color}"></span>${name}</span>`;
+    }).join('');
+    const badge = past ? '' : '<span style="font-size:0.65rem;background:#fef3c7;color:#92400e;border-radius:4px;padding:1px 6px;margin-left:6px;">upcoming</span>';
+    return `<div class="modal-meeting" style="opacity:${past?1:0.8};">
+      <div class="meeting-date-box">
+        <div class="month">${d.toLocaleString('en',{month:'short'})}</div>
+        <div class="day">${d.getDate()}</div>
+      </div>
+      <div class="meeting-info">
+        <div class="meeting-title">${e.summary||'(no title)'}${badge}</div>
+        <div class="meeting-meta" style="margin-top:5px;">${dots}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderTeamList(meetings) {
+  const el = document.getElementById('teamList');
+  const psArr = [...PS_MEMBERS].filter(email => !(activeQ <= 2 && email === CECILIA));
+  const rows = psArr.map((email, i) => {
+    const myMeetings = meetings.filter(e => e._psOwners && e._psOwners.has(email));
+    const hours = myMeetings.reduce((sum, e) => {
+      if (!e.start?.dateTime || !e.end?.dateTime) return sum;
+      return sum + (new Date(e.end.dateTime) - new Date(e.start.dateTime)) / 3600000;
+    }, 0);
+    const name = email.split('@')[0].split('.').map(w => w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+    return { email, name, count: myMeetings.length, hours };
+  }).filter(r => r.count > 0).sort((a, b) => b.count - a.count);
+
+  if (!rows.length) { el.innerHTML = '<div class="empty-msg">No data for this quarter</div>'; return; }
+  const maxCount = rows[0].count;
+  el.innerHTML = rows.map(r => `
+    <div class="bar-row clickable" onclick="openMemberModal('${r.name}')">
+      <div class="bar-label" title="${r.name}">${r.name}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(r.count/maxCount*100).toFixed(1)}%;background:#0ea5e9"></div></div>
+      <div style="text-align:right;flex-shrink:0;width:68px;">
+        <span style="font-size:0.8rem;font-weight:700;color:#0ea5e9;">${r.count}</span>
+        <span style="font-size:0.72rem;color:#9ca3af;margin-left:4px;">${r.hours.toFixed(1)}h</span>
+      </div>
+    </div>`).join('');
+}
+
+function renderTeamList(meetings) {
+  const el = document.getElementById('teamList');
+  const psArr = [...PS_MEMBERS].filter(email => !(activeQ <= 2 && email === CECILIA));
+  const rows = psArr.map((email, i) => {
+    const myMeetings = meetings.filter(e => e._psOwners && e._psOwners.has(email));
+    const hours = myMeetings.reduce((sum, e) => {
+      if (!e.start?.dateTime || !e.end?.dateTime) return sum;
+      return sum + (new Date(e.end.dateTime) - new Date(e.start.dateTime)) / 3600000;
+    }, 0);
+    const name = email.split('@')[0].split('.').map(w => w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+    return { email, name, count: myMeetings.length, hours };
+  }).filter(r => r.count > 0).sort((a, b) => b.count - a.count);
+
+  if (!rows.length) { el.innerHTML = '<div class="empty-msg">No data for this quarter</div>'; return; }
+  const maxCount = rows[0].count;
+  el.innerHTML = rows.map(r => `
+    <div class="bar-row clickable" onclick="openMemberModal('${r.name}')">
+      <div class="bar-label" title="${r.name}">${r.name}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(r.count/maxCount*100).toFixed(1)}%;background:#0ea5e9"></div></div>
+      <div style="text-align:right;flex-shrink:0;width:68px;">
+        <span style="font-size:0.8rem;font-weight:700;color:#0ea5e9;">${r.count}</span>
+        <span style="font-size:0.72rem;color:#9ca3af;margin-left:4px;">${r.hours.toFixed(1)}h</span>
+      </div>
+    </div>`).join('');
 }
 
 function renderCurrentWeek(allMeetings) {
@@ -791,7 +890,11 @@ function renderCurrentWeek(allMeetings) {
         return dt >= todayStart && dt <= todayEnd;
       }).length;
       const name = email.split('@')[0].split('.').map(w => w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
-      return { email, name, count: myMeetings.length, todayCount, color: PS_COLORS[i % PS_COLORS.length] };
+      const hours = myMeetings.reduce((sum, e) => {
+        if (!e.start?.dateTime || !e.end?.dateTime) return sum;
+        return sum + (new Date(e.end.dateTime) - new Date(e.start.dateTime)) / 3600000;
+      }, 0);
+      return { email, name, count: myMeetings.length, hours, todayCount, color: PS_COLORS[i % PS_COLORS.length] };
     })
     .sort((a, b) => b.count - a.count);
 
@@ -808,8 +911,11 @@ function renderCurrentWeek(allMeetings) {
         <span class="ps-dot" style="background:${r.color}"></span>
         <div class="bar-label" style="width:110px;flex-shrink:0;">${r.name}</div>
         <div class="bar-track" style="flex:1"><div class="bar-fill" style="width:${r.count?((r.count/maxCount)*100).toFixed(1):0}%;background:${r.color}"></div></div>
-        <div style="font-size:0.8rem;font-weight:700;color:${r.color};width:24px;text-align:right;flex-shrink:0;">${r.count}</div>
-        ${r.todayCount ? `<span style="font-size:0.65rem;background:${r.color}22;color:${r.color};border-radius:4px;padding:1px 5px;flex-shrink:0;">${r.todayCount} today</span>` : '<span style="width:56px;flex-shrink:0;"></span>'}
+        <div style="text-align:right;flex-shrink:0;width:80px;">
+          <span style="font-size:0.8rem;font-weight:700;color:${r.color};">${r.count}</span>
+          <span style="font-size:0.72rem;color:#9ca3af;margin-left:3px;">${r.hours.toFixed(1)}h</span>
+          ${r.todayCount ? `<span style="display:block;font-size:0.65rem;background:${r.color}22;color:${r.color};border-radius:4px;padding:0 4px;margin-top:1px;">${r.todayCount} today</span>` : ''}
+        </div>
       </div>`).join('')
   }</div>`;
 }
@@ -842,9 +948,11 @@ function renderWeeklyChart(meetings, qStart, qEnd) {
     cursor.setDate(cursor.getDate()+7);
   }
   const datasets = [...PS_MEMBERS].map((email,i) => {
-    const data = weekStarts.map((ws,wi) => meetings.filter(e => { const dt=new Date(e.start?.dateTime||e.start?.date); return dt>=ws&&dt<=weekEnds[wi]&&e._psOwners&&e._psOwners.has(email); }).length);
+    const weekMeetings = weekStarts.map((ws,wi) => meetings.filter(e => { const dt=new Date(e.start?.dateTime||e.start?.date); return dt>=ws&&dt<=weekEnds[wi]&&e._psOwners&&e._psOwners.has(email); }));
+    const data = weekMeetings.map(wm => wm.length);
+    const hoursData = weekMeetings.map(wm => wm.reduce((sum,e) => { if(!e.start?.dateTime||!e.end?.dateTime) return sum; return sum+(new Date(e.end.dateTime)-new Date(e.start.dateTime))/3600000; }, 0));
     if (data.every(n=>n===0)) return null;
-    return { label: psFirstName(email), data, backgroundColor: PS_COLORS[i%PS_COLORS.length], borderRadius: 2, borderSkipped: false };
+    return { label: psFirstName(email), data, hoursData, backgroundColor: PS_COLORS[i%PS_COLORS.length], borderRadius: 2, borderSkipped: false };
   }).filter(Boolean);
 
   weekBoundaries = weekStarts.map((ws, wi) => ({ start: ws, end: weekEnds[wi], label: weeks[wi] }));
@@ -862,7 +970,7 @@ function renderWeeklyChart(meetings, qStart, qEnd) {
       },
       plugins: {
         legend: { display: true, position: 'top', labels: { boxWidth: 12, font: { size: 11 }, padding: 14 } },
-        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y} meeting${ctx.parsed.y!==1?'s':''}` } }
+        tooltip: { callbacks: { label: ctx => { const h = ctx.dataset.hoursData?.[ctx.dataIndex]; return `${ctx.dataset.label}: ${ctx.parsed.y} meeting${ctx.parsed.y!==1?'s':''}${h!=null?' · '+h.toFixed(1)+'h':''}`; } } }
       },
       scales: {
         x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 }, maxRotation: 45 }, cursor: 'pointer' },
