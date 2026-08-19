@@ -698,10 +698,15 @@ function openMemberModal(displayName) {
   const meetings = allCustomerMeetings.filter(e => e._psOwners && e._psOwners.has(email));
   document.getElementById('modalName').textContent = displayName;
   document.getElementById('modalSub').textContent = `${meetings.length} customer meeting${meetings.length!==1?'s':''} \u00b7 Q${activeQ} ${CURRENT_YEAR}`;
+  const csmCount=meetings.filter(e=>classifyMeeting(e)==='csm').length;
+  const salesCount=meetings.filter(e=>classifyMeeting(e)==='sales').length;
+  const otherCount=meetings.length-csmCount-salesCount;
+  const total=meetings.length||1;
+  const splitBar=`<div style="margin:12px 0 4px;padding:10px 0 14px;border-bottom:1px solid #f3f4f6;"><div style="display:flex;gap:6px;margin-bottom:8px;">${csmCount?`<div style="flex:${csmCount};background:#16a34a;height:8px;border-radius:4px;"></div>`:''} ${salesCount?`<div style="flex:${salesCount};background:#2563eb;height:8px;border-radius:4px;"></div>`:''} ${otherCount?`<div style="flex:${otherCount};background:#d1d5db;height:8px;border-radius:4px;"></div>`:''}</div><div style="display:flex;gap:16px;font-size:0.75rem;">${csmCount?`<span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#16a34a;margin-right:4px;"></span><span style="color:#374151;font-weight:600;">CSM</span> <span style="color:#6b7280;">${csmCount} (${Math.round(csmCount/total*100)}%)</span></span>`:''} ${salesCount?`<span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#2563eb;margin-right:4px;"></span><span style="color:#374151;font-weight:600;">Sales</span> <span style="color:#6b7280;">${salesCount} (${Math.round(salesCount/total*100)}%)</span></span>`:''} ${otherCount?`<span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#d1d5db;margin-right:4px;"></span><span style="color:#374151;font-weight:600;">Other</span> <span style="color:#6b7280;">${otherCount} (${Math.round(otherCount/total*100)}%)</span></span>`:''}</div></div>`;
   const body = document.getElementById('modalBody');
   if (!meetings.length) { body.innerHTML='<div class="empty-msg" style="padding:24px 0;">No meetings found.</div>'; }
   else {
-    body.innerHTML = meetings.map(e => {
+    body.innerHTML = splitBar + meetings.map(e => {
       const dt = e.start?.dateTime||e.start?.date;
       const d = new Date(dt);
       const month = d.toLocaleString('en',{month:'short'});
