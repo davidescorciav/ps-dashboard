@@ -947,7 +947,7 @@ function renderWeeklyChart(meetings, qStart, qEnd) {
   const day = cursor.getDay();
   cursor.setDate(cursor.getDate() + (day===0?-6:1-day));
   while (cursor <= qEnd) {
-    const fri = new Date(cursor); fri.setDate(fri.getDate()+4);
+    const fri = new Date(cursor); fri.setDate(fri.getDate()+4); fri.setHours(23,59,59,999);
     weeks.push(cursor.toLocaleString('en',{month:'short',day:'numeric'}));
     weekStarts.push(new Date(cursor)); weekEnds.push(fri);
     cursor.setDate(cursor.getDate()+7);
