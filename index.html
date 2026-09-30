@@ -536,7 +536,11 @@ async function loadData() {
   document.getElementById('errorBanner').style.display = 'none';
   const { start, end } = getQuarterRange(CURRENT_YEAR, activeQ);
   const timeMin = start.toISOString(), timeMax = end.toISOString();
-  const calendars = activeQ <= 2 ? [...PS_MEMBERS].filter(m => m !== CECILIA) : [...PS_MEMBERS];
+  const calendars = [...PS_MEMBERS].filter(m => {
+    if (activeQ <= 2 && m === CECILIA) return false;
+    if (m === JUSTINE_EMAIL) return false; // calendar no longer accessible; historical data via other calendars
+    return true;
+  });
 
   let allEvents = [];
   try {
