@@ -416,6 +416,8 @@ const CECILIA = 'cecilia.raden@bannerflow.com';
 const IGNORED_ATTENDEES = new Set(['velascom2001@gmail.com']);
 const PS_COLORS = ['#2563eb','#dc2626','#16a34a','#d97706','#7c3aed','#db2777','#0891b2','#65a30d'];
 
+const CECILIA_EMAIL = 'cecilia.raden@bannerflow.com';
+const JUSTINE_EMAIL = 'justine.zuidberg@bannerflow.com';
 const NOW = new Date();
 const CURRENT_YEAR = NOW.getFullYear();
 let activeQ = Math.floor(NOW.getMonth() / 3) + 1;
@@ -812,7 +814,13 @@ function renderShadowing(allMeetings) {
 
 function renderTeamList(meetings) {
   const el = document.getElementById('teamList');
-  const psArr = [...PS_MEMBERS].filter(email => !(activeQ <= 2 && email === CECILIA));
+  const CECILIA = 'cecilia.raden@bannerflow.com';
+  const JUSTINE = 'justine.zuidberg@bannerflow.com';
+  const psArr = [...PS_MEMBERS].filter(email => {
+    if (activeQ <= 2 && email === CECILIA) return false;
+    if (activeQ >= 4 && email === JUSTINE) return false;
+    return true;
+  });
   const rows = psArr.map((email, i) => {
     const myMeetings = meetings.filter(e => e._psOwners && e._psOwners.has(email));
     const hours = myMeetings.reduce((sum, e) => {
@@ -838,7 +846,13 @@ function renderTeamList(meetings) {
 
 function renderTeamList(meetings) {
   const el = document.getElementById('teamList');
-  const psArr = [...PS_MEMBERS].filter(email => !(activeQ <= 2 && email === CECILIA));
+  const CECILIA = 'cecilia.raden@bannerflow.com';
+  const JUSTINE = 'justine.zuidberg@bannerflow.com';
+  const psArr = [...PS_MEMBERS].filter(email => {
+    if (activeQ <= 2 && email === CECILIA) return false;
+    if (activeQ >= 4 && email === JUSTINE) return false;
+    return true;
+  });
   const rows = psArr.map((email, i) => {
     const myMeetings = meetings.filter(e => e._psOwners && e._psOwners.has(email));
     const hours = myMeetings.reduce((sum, e) => {
@@ -887,7 +901,11 @@ function renderCurrentWeek(allMeetings) {
 
   const psArr = [...PS_MEMBERS];
   const rows = psArr
-    .filter(email => !(activeQ <= 2 && email === CECILIA))
+    .filter(email => {
+      if (activeQ <= 2 && email === CECILIA_EMAIL) return false;
+      if (activeQ >= 4 && email === JUSTINE_EMAIL) return false;
+      return true;
+    })
     .map((email, i) => {
       const myMeetings = weekMeetings.filter(e => e._psOwners && e._psOwners.has(email));
       const todayCount = myMeetings.filter(e => {
